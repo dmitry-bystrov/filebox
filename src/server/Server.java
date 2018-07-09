@@ -83,22 +83,22 @@ public class Server implements ConnectionSettings, ServerAPI {
 
     public synchronized void subscribeClient(ClientHandler client){
         clients.add(client);
-        broadcastClientList();
+        //broadcastClientList();
     }
 
     public synchronized void unsubscribeClient(ClientHandler client){
         clients.remove(client);
-        broadcastClientList();
+        //broadcastClientList();
     }
 
-    private synchronized void broadcastClientList() {
-        StringBuffer sb = new StringBuffer(USERLIST);
-        for (ClientHandler client : clients) {
-            sb.append(" ");
-            sb.append(client.getNickname());
-        }
-        for (ClientHandler client : clients) {
-            client.sendMessage(sb.toString());
-        }
-    }
+//    private synchronized void broadcastClientList() {
+//        StringBuffer sb = new StringBuffer(USERLIST);
+//        for (ClientHandler client : clients) {
+//            sb.append(" ");
+//            sb.append(client.getNickname());
+//        }
+//        for (ClientHandler client : clients) {
+//            client.sendMessage(sb.toString());
+//        }
+//    }
 }

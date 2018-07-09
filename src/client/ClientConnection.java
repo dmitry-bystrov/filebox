@@ -7,13 +7,14 @@ import javafx.application.Platform;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.Socket;
 
 public class ClientConnection implements ConnectionSettings, ServerAPI {
     private Socket socket;
     private Controller controller;
     private boolean authorized = false;
-    private DataInputStream in;
+    private ObjectInputStream in;
     private DataOutputStream out;
 
     public ClientConnection(Controller controller) {
@@ -41,13 +42,24 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
     public void openConnection() {
         try {
             socket = new Socket(SERVER_ADDR, SERVER_PORT);
-            in = new DataInputStream(socket.getInputStream());
+            in = new ObjectInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
 
             new Thread(() -> {
                 try {
                     while (true){
-                        String message = in.readUTF();
+                        Object messageObject = null;
+                        try {
+                            messageObject = in.readObject();
+                        } catch (ClassNotFoundException e) {
+                            e.printStackTrace();
+                        }
+
+                        String message = "";
+                        if (messageObject.getClass() == String.class) {
+                            message = (String) messageObject;
+                        }
+
                         if (message.equals(CLOSE_CONNECTION)){
                             notifyConnectionClosed();
                             break;

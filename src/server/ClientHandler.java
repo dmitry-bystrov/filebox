@@ -1,20 +1,22 @@
 package server;
 
 import common.ConnectionSettings;
+import common.FileInfo;
 import common.ServerAPI;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientHandler implements ServerAPI, ConnectionSettings {
 
     private Server server;
     private Socket socket;
     private DataInputStream in;
-    private DataOutputStream out;
+    private ObjectOutputStream out;
     private String nickname;
+    private File directory;
 
     public ClientHandler(Server server, Socket socket) {
         this.server = server;
@@ -22,7 +24,7 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
         this.nickname = UNAUTHORIZED;
     }
 
-    public void start(){
+    public void start() {
 
         new Thread(() -> {
             try {
@@ -41,24 +43,31 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
 
         try {
             in = new DataInputStream(socket.getInputStream());
-            out = new DataOutputStream(socket.getOutputStream());
+            out = new ObjectOutputStream(socket.getOutputStream());
 
             new Thread(() -> {
                 try {
-                    while (true){ // цикл авторизации
+                    while (true) { // цикл авторизации
                         String message = in.readUTF();
                         if (message.equals(CLOSE_CONNECTION)) break;
-                        if (message.startsWith(AUTH_REQUEST)){
+                        if (message.startsWith(AUTH_REQUEST)) {
                             String[] loginPass = message.split("\\s");
-                            if (loginPass.length == 3){
+                            if (loginPass.length == 3) {
                                 String result = server.getAuthService().getNicknameByLoginPass(loginPass[1], loginPass[2]);
-                                if (result != null)
-                                {
-                                    if (!server.isNicknameBusy(result)){
+                                if (result != null) {
+                                    if (!server.isNicknameBusy(result)) {
                                         nickname = result;
+
+                                        directory = new File(nickname);
+                                        if (!directory.exists()) {
+                                            if (!directory.mkdir()) {
+                                                System.err.println("Не удалось создать директорию для пользователя " + nickname);
+                                            }
+                                        }
+
                                         sendMessage(AUTH_SUCCESSFUL + " " + nickname);
-                                        server.broadcastServiceMessage(nickname + " зашел в чат");
                                         server.subscribeClient(this);
+                                        sendFileList();
                                         break;
                                     } else {
                                         sendServiceMessage("Учетная запись уже используется");
@@ -70,7 +79,7 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
                                 sendServiceMessage("Неверные параметры авторизации");
                             }
                         }
-                        if (message.startsWith(AUTH_REGISTER)){
+                        if (message.startsWith(AUTH_REGISTER)) {
                             String[] loginPass = message.split("\\s");
                             if (loginPass.length == 4) {
                                 if (server.getAuthService().setNicknameByLoginPass(loginPass[1], loginPass[2], loginPass[3])) {
@@ -84,12 +93,12 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
                         }
                     }
 
-                    while (true){ // цикл получения сообщений
+                    while (true) { // цикл получения сообщений
                         if (nickname.equals(UNAUTHORIZED)) break;
                         String message = in.readUTF();
                         if (message.equals(CLOSE_CONNECTION)) break;
                         String toUser = null;
-                        if (message.startsWith(TO_USER)){
+                        if (message.startsWith(TO_USER)) {
                             String[] parts = message.split("\\s");
                             toUser = parts[1];
                         }
@@ -116,7 +125,22 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
         }
     }
 
-    public void sendMessage(String message){
+    private void sendFileList() {
+        try {
+            File[] fileList = directory.listFiles();
+            List<FileInfo> fileInfoList = new ArrayList<>();
+            for (int i = 0; i < fileList.length; i++) {
+                System.out.println(String.format("%s - %d", fileList[i].getName(), (int) fileList[i].length()));
+                fileInfoList.add(new FileInfo(fileList[i].getName(), fileList[i].length()));
+            }
+            out.writeObject(fileInfoList);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void sendMessage(String message) {
         try {
             out.writeUTF(message);
             out.flush();
