@@ -13,7 +13,7 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
 
     private Server server;
     private Socket socket;
-    private DataInputStream in;
+    private ObjectInputStream in;
     private ObjectOutputStream out;
     private String nickname;
     private File directory;
@@ -42,7 +42,7 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
         }).start();
 
         try {
-            in = new DataInputStream(socket.getInputStream());
+            in = new ObjectInputStream(socket.getInputStream());
             out = new ObjectOutputStream(socket.getOutputStream());
 
             new Thread(() -> {

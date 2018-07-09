@@ -1,27 +1,30 @@
 package client;
 
 import common.ConnectionSettings;
+import common.FileInfo;
 import common.ServerAPI;
 import javafx.application.Platform;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientConnection implements ConnectionSettings, ServerAPI {
     private Socket socket;
     private Controller controller;
     private boolean authorized = false;
     private ObjectInputStream in;
-    private DataOutputStream out;
+    private ObjectOutputStream out;
 
     public ClientConnection(Controller controller) {
         this.controller = controller;
     }
 
-    public void sendMessage(String message){
+    public void sendMessage(String message) {
         if (socket == null || socket.isClosed()) return;
         try {
             out.writeUTF(message);
@@ -43,24 +46,32 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
         try {
             socket = new Socket(SERVER_ADDR, SERVER_PORT);
             in = new ObjectInputStream(socket.getInputStream());
-            out = new DataOutputStream(socket.getOutputStream());
+            out = new ObjectOutputStream(socket.getOutputStream());
 
             new Thread(() -> {
                 try {
-                    while (true){
-                        Object messageObject = null;
-                        try {
-                            messageObject = in.readObject();
-                        } catch (ClassNotFoundException e) {
-                            e.printStackTrace();
-                        }
+                    while (true) {
+//                        Object messageObject = null;
+//                        try {
+//                            messageObject = in.readObject();
+//                            System.out.println(messageObject.getClass().toString());
+//                        } catch (ClassNotFoundException e) {
+//                            e.printStackTrace();
+//                        }
+//
+//                        String message = "";
+//                        //System.out.println(messageObject.getClass().getName());
+//                        if (messageObject.getClass() == String.class) {
+//                            message = (String) messageObject;
+//                        }
 
-                        String message = "";
-                        if (messageObject.getClass() == String.class) {
-                            message = (String) messageObject;
-                        }
+                        String message = in.readUTF();
 
-                        if (message.equals(CLOSE_CONNECTION)){
+//                        if (messageObject.getClass() == ArrayList.class) {
+//                            List<FileInfo> fileInfoList = (ArrayList<FileInfo>) messageObject;
+//                        }
+
+                        if (message.equals(CLOSE_CONNECTION)) {
                             notifyConnectionClosed();
                             break;
                         }
@@ -115,7 +126,7 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
         sendMessage(AUTH_REQUEST + " " + login + " " + pass);
     }
 
-    private void updateControllerState(){
+    private void updateControllerState() {
         Platform.runLater(() -> controller.updateState());
     }
 
@@ -123,16 +134,16 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
 //        Platform.runLater(() -> controller.updateUserList(userList.split("\\s")));
     }
 
-    private void serviceMessage(String message){
+    private void serviceMessage(String message) {
         Platform.runLater(() -> controller.serviceMessage(message));
     }
 
-    private void userMessage(String message, boolean personal){
+    private void userMessage(String message, boolean personal) {
         if (!message.startsWith(FROM_USER)) return;
         String[] parts = message.split("\\s");
         String fromUser = parts[1];
-        String toUser = personal?parts[3]:"";
-        String message_text = message.substring(FROM_USER.length() + 1 + fromUser.length() + 1 + (personal?TO_USER.length() + 1 + toUser.length() + 1:0));
+        String toUser = personal ? parts[3] : "";
+        String message_text = message.substring(FROM_USER.length() + 1 + fromUser.length() + 1 + (personal ? TO_USER.length() + 1 + toUser.length() + 1 : 0));
         Platform.runLater(() -> controller.userMessage(fromUser, toUser, message_text, personal));
     }
 
