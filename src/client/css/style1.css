@@ -1,44 +1,6 @@
-.background {
-    -fx-background-image: url("../assets/background1.jpg");
-}
-
-#smileButton {
-    -fx-background-image: url("../assets/smile.png");
-    -fx-background-position: center;
-    -fx-background-size: 32;
-    -fx-background-repeat: no-repeat;
-    -fx-text-fill: rgba(0,0,0,0);
-}
-
-#smileButton:hover {
-    -fx-background-color: rgb(250,100,100);
-    -fx-cursor: hand;
-}
-
-#usersButton {
-    -fx-background-image: url("../assets/users.png");
-    -fx-background-position: center;
-    -fx-background-size: 40;
-    -fx-background-repeat: no-repeat;
-    -fx-text-fill: rgba(0,0,0,0);
-}
-
-#usersButton:hover {
-    -fx-background-color: rgb(250,100,100);
-    -fx-cursor: hand;
-}
-
-#userList {
-    -fx-background-color: rgba(255,255,255,0.7);
-    -fx-padding: 5 5 5 5;
-    -fx-border-width: 2px;
-    -fx-border-color: rgb(250,200,200);
-}
-
 #loginPassBox {
     -fx-padding: 40;
     -fx-font-size: 14pt;
-    -fx-background-color: white;
 }
 
 #registerLink {
@@ -59,65 +21,25 @@
     -fx-fill: rgb(140,80,60);
 }
 
-#userNickname {
-    -fx-fill: rgb(80,20,0);
-}
-
-#userNickname:hover {
-    -fx-underline: true;
-    -fx-cursor: hand;
-}
-
-#personalMessage {
-    -fx-font-style: italic;
-}
-
-#smilesPane {
-    -fx-background-color: white;
-    -fx-padding: 5 5 5 10;
-    -fx-border-width: 2px;
-    -fx-border-color: rgb(250,200,200);
-}
-
 .text-field {
     -fx-font-size: 13pt;
     -fx-border-width: 2px;
-    -fx-border-color: rgb(250,200,200);
-    -fx-background-color: white;
+}
+
+.buttonsPane {
+    -fx-padding: 10px;
+}
+
+.buttonsPane .button {
+    -fx-font-size: 14pt;
+    -fx-pref-width: 200px;
 }
 
 .button {
-    -fx-background-radius: 0;
     -fx-font-size: 14pt;
-    -fx-background-color: rgb(250,200,200);
-}
-
-.button:hover {
-    -fx-text-fill: rgb(250,100,100);
-    -fx-cursor: hand;
 }
 
 TextFlow {
     -fx-font-size: 14pt;
-}
-
-.scroll-pane {
-    -fx-padding: 10 0 10 15;
-    -fx-background-color: rgba(255,255,255,0.5);
-}
-
-.scroll-pane .viewport {
-    -fx-background-color: transparent;
-}
-
-.scroll-bar:vertical {
-    -fx-background-color:transparent;
-    -fx-pref-width: 20;
-    -fx-font-size: 10pt;
-}
-
-.scroll-bar:vertical .thumb {
-    -fx-background-color: white;
-    -fx-background-color: rgba(250,200,200,1.0);
 }
 

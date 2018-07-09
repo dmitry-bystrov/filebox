@@ -9,8 +9,8 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-    public static final int START_WIDTH = 830;
-    public static final int START_HEIGHT = 600;
+    public static final int START_WIDTH = 600;
+    public static final int START_HEIGHT = 800;
     public static final String WINDOW_TITLE = "Chat client";
 
     @Override
@@ -21,8 +21,8 @@ public class Main extends Application {
 
         primaryStage.setTitle(WINDOW_TITLE);
         primaryStage.setScene(new Scene(root, START_WIDTH, START_HEIGHT));
-        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/client/assets/icon.png")));
-        primaryStage.getScene().getStylesheets().add(new Styles().getRandomStyle());
+//        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/client/assets/icon.png")));
+        primaryStage.getScene().getStylesheets().add((getClass().getResource("/client/css/style1.css")).toExternalForm());
         primaryStage.show();
     }
 

@@ -49,14 +49,13 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                     while (true){
                         String message = in.readUTF();
                         if (message.equals(CLOSE_CONNECTION)){
-                            setAuthorized(false);
-                            updateControllerState();
+                            notifyConnectionClosed();
                             break;
                         }
                         if (message.startsWith(AUTH_SUCCESSFUL)) {
                             setAuthorized(true);
                             updateControllerState();
-                            serviceMessage("Добро пожаловать в чат," + message.substring(AUTH_SUCCESSFUL.length()));
+                            serviceMessage("Добро пожаловать," + message.substring(AUTH_SUCCESSFUL.length()));
                             continue;
                         }
                         if (message.startsWith(SERVICE_MESSAGE)) {
@@ -74,7 +73,7 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                         userMessage(message, false);
                     }
                 } catch (IOException e) {
-                    System.err.println("Соединение с сервером прервано");
+                    notifyConnectionClosed();
                 } finally {
                     if (!socket.isClosed()) try {
                         socket.close();
@@ -87,6 +86,12 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
         } catch (IOException e) {
             serviceMessage("Ошибка соединения с сервером");
         }
+    }
+
+    private void notifyConnectionClosed() {
+        setAuthorized(false);
+        updateControllerState();
+        serviceMessage("Соединение с сервером прервано");
     }
 
     public void closeConnection() {
@@ -103,7 +108,7 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
     }
 
     private void updateUserList(String userList) {
-        Platform.runLater(() -> controller.updateUserList(userList.split("\\s")));
+//        Platform.runLater(() -> controller.updateUserList(userList.split("\\s")));
     }
 
     private void serviceMessage(String message){
@@ -119,8 +124,8 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
         Platform.runLater(() -> controller.userMessage(fromUser, toUser, message_text, personal));
     }
 
-    public void register(String nickname, String login, String pass) {
+    public void register(String login, String pass) {
         if (socket == null || socket.isClosed()) openConnection();
-        sendMessage(AUTH_REGISTER + " " + nickname + " " + login + " " + pass);
+        sendMessage(AUTH_REGISTER + " " + login + " " + login + " " + pass);
     }
 }
