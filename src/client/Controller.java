@@ -1,10 +1,14 @@
 package client;
 
-import common.ServerAPI;
+import common.FileInfo;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
@@ -15,15 +19,45 @@ import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
 
 import java.net.URL;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class Controller implements Initializable {
-    private DateFormat dateFormat;
     private ClientConnection clientConnection;
+
+    public static class FileProperties {
+        private final SimpleStringProperty fileName;
+        private final SimpleStringProperty fileSize;
+
+        public FileProperties(String fileName, long fileSize) {
+            this.fileName = new SimpleStringProperty(fileName);
+            this.fileSize = new SimpleStringProperty(String.valueOf(fileSize));
+        }
+
+        public String getFileName() {
+            return fileName.get();
+        }
+
+        public SimpleStringProperty fileNameProperty() {
+            return fileName;
+        }
+
+        public void setFileName(String fileName) {
+            this.fileName.set(fileName);
+        }
+
+        public String getFileSize() {
+            return fileSize.get();
+        }
+
+        public SimpleStringProperty fileSizeProperty() {
+            return fileSize;
+        }
+
+        public void setFileSize(String fileSize) {
+            this.fileSize.set(fileSize);
+        }
+    }
 
     @FXML
     public TextFlow textFlow;
@@ -37,57 +71,19 @@ public class Controller implements Initializable {
     public Button registerButton;
     public Label registerLink;
     public BorderPane filesPane;
+    public TableView<FileProperties> tableView;
+    private TableColumn<FileProperties, String> tableColumnFileName;
+    private TableColumn<FileProperties, String> tableColumnFileSize;
+    private final ObservableList<FileProperties> tableData = FXCollections.observableArrayList();
 
     public Controller() {
-        dateFormat = new SimpleDateFormat("hh:mm");
-    }
 
-    public void userMessage(String fromUser, String toUser, String message, boolean personal) {
-        if (message.isEmpty()) return;
-
-        Date date = new Date();
-        Text messageHeaderStart = new Text("[" + dateFormat.format(date) + "] ");
-        Text messageHeaderNickname = new Text(fromUser);
-        Text messageHeaderEnd = new Text((personal ? " > " + toUser : "") + ": ");
-
-        messageHeaderStart.setId("messageHeader");
-        messageHeaderEnd.setId("messageHeader");
-        messageHeaderNickname.setId("userNickname");
-        textFlow.getChildren().addAll(messageHeaderStart, messageHeaderNickname, messageHeaderEnd);
-
-        String[] parts = message.split("\\s");
-
-        textFlow.getChildren().add(new Text("\n"));
-        scrollToEnd();
-    }
-
-    public void serviceMessage(String message) {
-        if (message.isEmpty()) return;
-
-        Text serviceMessageText = new Text(message + "\n");
-        serviceMessageText.setId("serviceMessage");
-        textFlow.getChildren().add(serviceMessageText);
-        scrollToEnd();
-    }
-
-    private void login() {
-        if (loginField.getText() != null && passwordField.getText() != null) {
-            clientConnection.authorize(loginField.getText(), passwordField.getText());
-        }
-    }
-
-    public void sendMessage(){
-        if (clientConnection.isAuthorized()) {
-//            clientConnection.sendMessage(textField.getText());
-//            textField.clear();
-//            textField.requestFocus();
-        } else login();
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        textFlow.maxWidthProperty().bind(scrollPane.widthProperty().subtract(40));
+        textFlow.maxWidthProperty().bind(scrollPane.widthProperty());
         loginPassBox.managedProperty().bind(loginPassBox.visibleProperty());
         nicknameBox.managedProperty().bind(nicknameBox.visibleProperty());
         registerButton.managedProperty().bind(registerButton.visibleProperty());
@@ -95,9 +91,30 @@ public class Controller implements Initializable {
         registerLink.managedProperty().bind(registerLink.visibleProperty());
         filesPane.managedProperty().bind(filesPane.visibleProperty());
         clientConnection = new ClientConnection(this);
-        clientConnection.openConnection();
 
+        tableColumnFileName = new TableColumn<>("Имя файла");
+        tableColumnFileName.getStyleClass().add("tableColumnFileName");
+        tableColumnFileName.setCellValueFactory(new PropertyValueFactory<>("fileName"));
+        tableColumnFileSize = new TableColumn<>("Размер файла");
+        tableColumnFileSize.getStyleClass().add("tableColumnFileSize");
+        tableColumnFileSize.setCellValueFactory(new PropertyValueFactory<>("fileSize"));
+        tableView.setItems(tableData);
+        tableView.getColumns().add(tableColumnFileName);
+        tableView.getColumns().add(tableColumnFileSize);
         updateState();
+    }
+
+    public void updateTable(List<FileInfo> fileInfoList) {
+        tableData.clear();
+        for (int i = 0; i < fileInfoList.size(); i++) {
+            tableData.add(new FileProperties(fileInfoList.get(i).getFileName(), fileInfoList.get(i).getFileSize()));
+        }
+    }
+
+    public void login(){
+        if (loginField.getText() != null && passwordField.getText() != null) {
+            clientConnection.authorize(loginField.getText(), passwordField.getText());
+        }
     }
 
     public void setupStageListeners(Stage stage) {
@@ -155,5 +172,14 @@ public class Controller implements Initializable {
         registerButton.setVisible(true);
         loginButton.setVisible(false);
         registerLink.setVisible(false);
+    }
+
+    public void serviceMessage(String message) {
+        if (message.isEmpty()) return;
+
+        Text serviceMessageText = new Text(message + "\n");
+        serviceMessageText.setId("serviceMessage");
+        textFlow.getChildren().add(serviceMessageText);
+        scrollToEnd();
     }
 }

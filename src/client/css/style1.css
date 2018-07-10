@@ -26,13 +26,27 @@
     -fx-border-width: 2px;
 }
 
+.tableView {
+    -fx-font-size: 12pt;
+    -fx-pref-width: 600;
+    -fx-pref-height: 800;
+}
+
+.tableColumnFileName {
+    -fx-pref-width: 400;
+}
+
+.tableColumnFileSize {
+    -fx-pref-width: 200;
+}
+
 .buttonsPane {
-    -fx-padding: 10px;
+    -fx-padding: 0 0 0 10;
 }
 
 .buttonsPane .button {
     -fx-font-size: 14pt;
-    -fx-pref-width: 200px;
+    -fx-pref-width: 200;
 }
 
 .button {
@@ -40,6 +54,15 @@
 }
 
 TextFlow {
-    -fx-font-size: 14pt;
+    -fx-font-size: 10pt;
+}
+
+.filesPane {
+    -fx-padding: 10;
+}
+
+.logScrollPane {
+    -fx-pref-height: 60;
+    -fx-padding: 6;
 }
 

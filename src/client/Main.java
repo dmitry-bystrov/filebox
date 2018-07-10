@@ -9,9 +9,9 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-    public static final int START_WIDTH = 600;
-    public static final int START_HEIGHT = 800;
-    public static final String WINDOW_TITLE = "Chat client";
+    public static final int START_WIDTH = 800;
+    public static final int START_HEIGHT = 600;
+    public static final String WINDOW_TITLE = "FileBox - simple network storage";
 
     @Override
     public void start(Stage primaryStage) throws Exception{

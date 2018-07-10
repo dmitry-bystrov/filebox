@@ -13,13 +13,13 @@
             </HBox>
             <HBox alignment="CENTER" spacing="15">
                 <Label prefWidth="80" text="Пароль:"/>
-                <PasswordField prefWidth="220" fx:id="passwordField" onAction="#sendMessage"/>
+                <PasswordField prefWidth="220" fx:id="passwordField" onAction="#login"/>
             </HBox>
             <HBox fx:id="nicknameBox" alignment="CENTER" spacing="15">
                 <Label prefWidth="80" text="Пароль:"/>
-                <PasswordField prefWidth="220" fx:id="password2Field" onAction="#sendMessage"/>
+                <PasswordField prefWidth="220" fx:id="password2Field" onAction="#login"/>
             </HBox>
-            <Button fx:id="loginButton" onAction="#sendMessage" text="Подключиться к хранилищу"/>
+            <Button fx:id="loginButton" onAction="#login" text="Подключиться к хранилищу"/>
             <Button fx:id="registerButton" onAction="#registerUser" text="Регистрация"/>
             <Label fx:id="registerLink" onMouseClicked="#registerSwitch" text="Регистрация"/>
         </VBox>
@@ -27,9 +27,11 @@
     <right>
     </right>
     <center>
-        <BorderPane fx:id="filesPane">
+        <BorderPane fx:id="filesPane" styleClass="filesPane">
             <center>
-                <TableView fx:id="tableView"/>
+                <ScrollPane styleClass="tableViewScrollPane">
+                    <TableView fx:id="tableView" styleClass="tableView"/>
+                </ScrollPane>
             </center>
             <right>
                 <VBox styleClass="buttonsPane" spacing="10">
@@ -41,7 +43,7 @@
         </BorderPane>
     </center>
     <bottom>
-        <ScrollPane fx:id="scrollPane" vbarPolicy="ALWAYS" maxHeight="100" prefHeight="100">
+        <ScrollPane fx:id="scrollPane" vbarPolicy="ALWAYS" styleClass="logScrollPane">
             <TextFlow fx:id="textFlow"/>
         </ScrollPane>
     </bottom>

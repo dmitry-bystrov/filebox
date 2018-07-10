@@ -98,7 +98,7 @@ public class Server implements ConnectionSettings, ServerAPI {
 //            sb.append(client.getNickname());
 //        }
 //        for (ClientHandler client : clients) {
-//            client.sendMessage(sb.toString());
+//            client.login(sb.toString());
 //        }
 //    }
 }

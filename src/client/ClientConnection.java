@@ -64,10 +64,7 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                         }
 
                         if (dataObject instanceof ArrayList) {
-                            List<FileInfo> fileInfoList = (ArrayList<FileInfo>) dataObject;
-                            for (int i = 0; i < fileInfoList.size(); i++) {
-                                System.out.println(fileInfoList.get(i).getFileName());
-                            }
+                            controller.updateTable((ArrayList<FileInfo>) dataObject);
                         }
 
                         if (message.equals(CLOSE_CONNECTION)) {
@@ -84,15 +81,15 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                             serviceMessage(message.substring(SERVICE_MESSAGE.length()));
                             continue;
                         }
-                        if (message.startsWith(PERSONAL_MESSAGE)) {
-                            userMessage(message.substring(PERSONAL_MESSAGE.length()), true);
-                            continue;
-                        }
-                        if (message.startsWith(USERLIST)) {
-                            updateUserList(message.substring(USERLIST.length() + 1));
-                            continue;
-                        }
-                        userMessage(message, false);
+//                        if (message.startsWith(PERSONAL_MESSAGE)) {
+//                            userMessage(message.substring(PERSONAL_MESSAGE.length()), true);
+//                            continue;
+//                        }
+//                        if (message.startsWith(USERLIST)) {
+//                            updateUserList(message.substring(USERLIST.length() + 1));
+//                            continue;
+//                        }
+//                        userMessage(message, false);
                     }
                 } catch (Exception e) {
                     notifyConnectionClosed();
@@ -129,22 +126,22 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
         Platform.runLater(() -> controller.updateState());
     }
 
-    private void updateUserList(String userList) {
-//        Platform.runLater(() -> controller.updateUserList(userList.split("\\s")));
-    }
+//    private void updateUserList(String userList) {
+////        Platform.runLater(() -> controller.updateUserList(userList.split("\\s")));
+//    }
 
     private void serviceMessage(String message) {
         Platform.runLater(() -> controller.serviceMessage(message));
     }
 
-    private void userMessage(String message, boolean personal) {
-        if (!message.startsWith(FROM_USER)) return;
-        String[] parts = message.split("\\s");
-        String fromUser = parts[1];
-        String toUser = personal ? parts[3] : "";
-        String message_text = message.substring(FROM_USER.length() + 1 + fromUser.length() + 1 + (personal ? TO_USER.length() + 1 + toUser.length() + 1 : 0));
-        Platform.runLater(() -> controller.userMessage(fromUser, toUser, message_text, personal));
-    }
+//    private void userMessage(String message, boolean personal) {
+//        if (!message.startsWith(FROM_USER)) return;
+//        String[] parts = message.split("\\s");
+//        String fromUser = parts[1];
+//        String toUser = personal ? parts[3] : "";
+//        String message_text = message.substring(FROM_USER.length() + 1 + fromUser.length() + 1 + (personal ? TO_USER.length() + 1 + toUser.length() + 1 : 0));
+//        Platform.runLater(() -> controller.userMessage(fromUser, toUser, message_text, personal));
+//    }
 
     public void register(String login, String pass) {
         if (socket == null || socket.isClosed()) openConnection();

@@ -26,21 +26,6 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
 
     public void start() {
 
-        new Thread(() -> {
-            try {
-                Thread.sleep(LOGIN_WAITING_TIMEOUT);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            if (nickname.equals(UNAUTHORIZED) && !socket.isClosed()) try {
-                socket.close();
-                System.out.println("Время ожидания авторизации истекло");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }).start();
-
         try {
             in = new ObjectInputStream(socket.getInputStream());
             out = new ObjectOutputStream(socket.getOutputStream());
