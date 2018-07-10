@@ -44,11 +44,23 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
         try {
             in = new ObjectInputStream(socket.getInputStream());
             out = new ObjectOutputStream(socket.getOutputStream());
+            out.flush();
 
             new Thread(() -> {
                 try {
-                    while (true) { // цикл авторизации
-                        String message = in.readUTF();
+                    Object dataObject = new Object();
+                    while (true) {
+                        try {
+                            dataObject = in.readObject();
+                        } catch (ClassNotFoundException e) {
+                            e.printStackTrace();
+                        }
+
+                        String message = "";
+                        if (dataObject instanceof String) {
+                            message = dataObject.toString();
+                        }
+
                         if (message.equals(CLOSE_CONNECTION)) break;
                         if (message.startsWith(AUTH_REQUEST)) {
                             String[] loginPass = message.split("\\s");
@@ -95,7 +107,17 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
 
                     while (true) { // цикл получения сообщений
                         if (nickname.equals(UNAUTHORIZED)) break;
-                        String message = in.readUTF();
+                        try {
+                            dataObject = in.readObject();
+                        } catch (ClassNotFoundException e) {
+                            e.printStackTrace();
+                        }
+
+                        String message = "";
+                        if (dataObject instanceof String) {
+                            message = dataObject.toString();
+                        }
+
                         if (message.equals(CLOSE_CONNECTION)) break;
                         String toUser = null;
                         if (message.startsWith(TO_USER)) {
@@ -142,7 +164,7 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
 
     public void sendMessage(String message) {
         try {
-            out.writeUTF(message);
+            out.writeObject(message);
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();

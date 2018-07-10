@@ -5,10 +5,7 @@ import common.FileInfo;
 import common.ServerAPI;
 import javafx.application.Platform;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +24,7 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
     public void sendMessage(String message) {
         if (socket == null || socket.isClosed()) return;
         try {
-            out.writeUTF(message);
+            out.writeObject(message);
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
@@ -45,31 +42,33 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
     public void openConnection() {
         try {
             socket = new Socket(SERVER_ADDR, SERVER_PORT);
-            in = new ObjectInputStream(socket.getInputStream());
+
             out = new ObjectOutputStream(socket.getOutputStream());
+            out.flush();
+
+            in = new ObjectInputStream(socket.getInputStream());
 
             new Thread(() -> {
                 try {
+                    Object dataObject = new Object();
                     while (true) {
-//                        Object messageObject = null;
-//                        try {
-//                            messageObject = in.readObject();
-//                            System.out.println(messageObject.getClass().toString());
-//                        } catch (ClassNotFoundException e) {
-//                            e.printStackTrace();
-//                        }
-//
-//                        String message = "";
-//                        //System.out.println(messageObject.getClass().getName());
-//                        if (messageObject.getClass() == String.class) {
-//                            message = (String) messageObject;
-//                        }
+                        try {
+                            dataObject = in.readObject();
+                        } catch (ClassNotFoundException e) {
+                            e.printStackTrace();
+                        }
 
-                        String message = in.readUTF();
+                        String message = "";
+                        if (dataObject instanceof String) {
+                            message = dataObject.toString();
+                        }
 
-//                        if (messageObject.getClass() == ArrayList.class) {
-//                            List<FileInfo> fileInfoList = (ArrayList<FileInfo>) messageObject;
-//                        }
+                        if (dataObject instanceof ArrayList) {
+                            List<FileInfo> fileInfoList = (ArrayList<FileInfo>) dataObject;
+                            for (int i = 0; i < fileInfoList.size(); i++) {
+                                System.out.println(fileInfoList.get(i).getFileName());
+                            }
+                        }
 
                         if (message.equals(CLOSE_CONNECTION)) {
                             notifyConnectionClosed();
@@ -95,7 +94,7 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                         }
                         userMessage(message, false);
                     }
-                } catch (IOException e) {
+                } catch (Exception e) {
                     notifyConnectionClosed();
                 } finally {
                     if (!socket.isClosed()) try {

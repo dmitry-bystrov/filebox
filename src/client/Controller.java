@@ -24,7 +24,6 @@ import java.util.ResourceBundle;
 public class Controller implements Initializable {
     private DateFormat dateFormat;
     private ClientConnection clientConnection;
-    private static final int SMILE_MAX_SIZE = 32;
 
     @FXML
     public TextFlow textFlow;
