@@ -11,6 +11,7 @@ import java.util.List;
 
 public class ClientHandler implements ServerAPI, ConnectionSettings {
 
+    public static final int STREAM_BUFFER_SIZE = 1024;
     private Server server;
     private Socket socket;
     private ObjectInputStream in;
@@ -41,56 +42,14 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
                             e.printStackTrace();
                         }
 
-                        String message = "";
                         if (dataObject instanceof String) {
-                            message = dataObject.toString();
-                        }
-
-                        if (message.equals(CLOSE_CONNECTION)) break;
-                        if (message.startsWith(AUTH_REQUEST)) {
-                            String[] loginPass = message.split("\\s");
-                            if (loginPass.length == 3) {
-                                String result = server.getAuthService().getNicknameByLoginPass(loginPass[1], loginPass[2]);
-                                if (result != null) {
-                                    if (!server.isNicknameBusy(result)) {
-                                        nickname = result;
-
-                                        directory = new File(nickname);
-                                        if (!directory.exists()) {
-                                            if (!directory.mkdir()) {
-                                                System.err.println("Не удалось создать директорию для пользователя " + nickname);
-                                            }
-                                        }
-
-                                        sendMessage(AUTH_SUCCESSFUL + " " + nickname);
-                                        server.subscribeClient(this);
-                                        sendFileList();
-                                        break;
-                                    } else {
-                                        sendServiceMessage("Учетная запись уже используется");
-                                    }
-                                } else {
-                                    sendServiceMessage("Неверный логин или пароль");
-                                }
-                            } else {
-                                sendServiceMessage("Неверные параметры авторизации");
-                            }
-                        }
-                        if (message.startsWith(AUTH_REGISTER)) {
-                            String[] loginPass = message.split("\\s");
-                            if (loginPass.length == 4) {
-                                if (server.getAuthService().setNicknameByLoginPass(loginPass[1], loginPass[2], loginPass[3])) {
-                                    sendServiceMessage("Учетная запись успешно зарегистрирована");
-                                } else {
-                                    sendServiceMessage("Не удалось зарегистрировать учетную запись\nВозможно указанные имя пользователя или логин уже используются");
-                                }
-                            } else {
-                                sendServiceMessage("Неверные параметры авторизации");
-                            }
+                            String message = dataObject.toString();
+                            if (message.equals(CLOSE_CONNECTION)) break;
+                            if (handleAuthorizationRequest(message)) break;
                         }
                     }
 
-                    while (true) { // цикл получения сообщений
+                    while (true) {
                         if (nickname.equals(UNAUTHORIZED)) break;
                         try {
                             dataObject = in.readObject();
@@ -98,25 +57,36 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
                             e.printStackTrace();
                         }
 
-                        String message = "";
-                        if (dataObject instanceof String) {
-                            message = dataObject.toString();
-                        }
+                        if (dataObject instanceof FileInfo) {
+                            FileInfo fileInfo = (FileInfo) dataObject;
 
-                        if (message.equals(CLOSE_CONNECTION)) break;
-                        String toUser = null;
-                        if (message.startsWith(TO_USER)) {
-                            String[] parts = message.split("\\s");
-                            toUser = parts[1];
+                            if (fileInfo.getOperation() == FileInfo.Operation.PUT_FILE) {
+                                byte[] buffer = new byte[STREAM_BUFFER_SIZE];
+                                int bytesReadFromSource;
+                                int totalBytesCount = 0;
+                                FileOutputStream inFile = new FileOutputStream(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
+                                BufferedInputStream bufferedInputStream = new BufferedInputStream(socket.getInputStream(), STREAM_BUFFER_SIZE);
+
+                                while ((bytesReadFromSource = bufferedInputStream.read(buffer, 0, STREAM_BUFFER_SIZE)) != -1) {
+                                    inFile.write(buffer, 0, bytesReadFromSource);
+                                    totalBytesCount += bytesReadFromSource;
+
+                                    if (totalBytesCount == fileInfo.getFileSize()) {
+                                        break;
+                                    }
+                                }
+
+                                inFile.close();
+                                sendServiceMessage(String.format("Файл %s загружен на сервер", fileInfo.getFileName()));
+                                sendFileList();
+                            }
                         }
-                        server.broadcastMessage(this, toUser, message);
                     }
                 } catch (IOException e) {
                     System.err.println("Работа обработчика сообщений прервана");
                 } finally {
                     server.unsubscribeClient(this);
                     if (!socket.isClosed()) sendMessage(CLOSE_CONNECTION);
-                    if (!nickname.equals(UNAUTHORIZED)) server.broadcastServiceMessage(nickname + " вышел из чата");
                     try {
                         if (!socket.isClosed()) socket.close();
                     } catch (IOException e) {
@@ -132,13 +102,57 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
         }
     }
 
+    private boolean handleAuthorizationRequest(String message) {
+        if (message.startsWith(AUTH_REQUEST)) {
+            String[] loginPass = message.split("\\s");
+            if (loginPass.length == 3) {
+                String result = server.getAuthService().getNicknameByLoginPass(loginPass[1], loginPass[2]);
+                if (result != null) {
+                    if (!server.isNicknameBusy(result)) {
+                        nickname = result;
+
+                        directory = new File(nickname);
+                        if (!directory.exists()) {
+                            if (!directory.mkdir()) {
+                                System.err.println("Не удалось создать директорию для пользователя " + nickname);
+                            }
+                        }
+
+                        sendMessage(AUTH_SUCCESSFUL + " " + nickname);
+                        server.subscribeClient(this);
+                        sendFileList();
+                        return true;
+                    } else {
+                        sendServiceMessage("Учетная запись уже используется");
+                    }
+                } else {
+                    sendServiceMessage("Неверный логин или пароль");
+                }
+            } else {
+                sendServiceMessage("Неверные параметры авторизации");
+            }
+        }
+        if (message.startsWith(AUTH_REGISTER)) {
+            String[] loginPass = message.split("\\s");
+            if (loginPass.length == 4) {
+                if (server.getAuthService().setNicknameByLoginPass(loginPass[1], loginPass[2], loginPass[3])) {
+                    sendServiceMessage("Учетная запись успешно зарегистрирована");
+                } else {
+                    sendServiceMessage("Не удалось зарегистрировать учетную запись\nВозможно указанные имя пользователя или логин уже используются");
+                }
+            } else {
+                sendServiceMessage("Неверные параметры авторизации");
+            }
+        }
+        return false;
+    }
+
     private void sendFileList() {
         try {
             File[] fileList = directory.listFiles();
             List<FileInfo> fileInfoList = new ArrayList<>();
             for (int i = 0; i < fileList.length; i++) {
-                System.out.println(String.format("%s - %d", fileList[i].getName(), (int) fileList[i].length()));
-                fileInfoList.add(new FileInfo(fileList[i].getName(), fileList[i].length()));
+                fileInfoList.add(new FileInfo(fileList[i].getName(), fileList[i].length(), FileInfo.Operation.LIST_FILES));
             }
             out.writeObject(fileInfoList);
             out.flush();

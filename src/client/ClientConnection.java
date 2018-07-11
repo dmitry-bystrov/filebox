@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ClientConnection implements ConnectionSettings, ServerAPI {
+    public static final int STREAM_BUFFER_SIZE = 1024;
     private Socket socket;
     private Controller controller;
     private boolean authorized = false;
@@ -19,16 +20,6 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
 
     public ClientConnection(Controller controller) {
         this.controller = controller;
-    }
-
-    public void sendMessage(String message) {
-        if (socket == null || socket.isClosed()) return;
-        try {
-            out.writeObject(message);
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     public boolean isAuthorized() {
@@ -81,15 +72,6 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                             serviceMessage(message.substring(SERVICE_MESSAGE.length()));
                             continue;
                         }
-//                        if (message.startsWith(PERSONAL_MESSAGE)) {
-//                            userMessage(message.substring(PERSONAL_MESSAGE.length()), true);
-//                            continue;
-//                        }
-//                        if (message.startsWith(USERLIST)) {
-//                            updateUserList(message.substring(USERLIST.length() + 1));
-//                            continue;
-//                        }
-//                        userMessage(message, false);
                     }
                 } catch (Exception e) {
                     notifyConnectionClosed();
@@ -126,25 +108,48 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
         Platform.runLater(() -> controller.updateState());
     }
 
-//    private void updateUserList(String userList) {
-////        Platform.runLater(() -> controller.updateUserList(userList.split("\\s")));
-//    }
-
     private void serviceMessage(String message) {
         Platform.runLater(() -> controller.serviceMessage(message));
     }
 
-//    private void userMessage(String message, boolean personal) {
-//        if (!message.startsWith(FROM_USER)) return;
-//        String[] parts = message.split("\\s");
-//        String fromUser = parts[1];
-//        String toUser = personal ? parts[3] : "";
-//        String message_text = message.substring(FROM_USER.length() + 1 + fromUser.length() + 1 + (personal ? TO_USER.length() + 1 + toUser.length() + 1 : 0));
-//        Platform.runLater(() -> controller.userMessage(fromUser, toUser, message_text, personal));
-//    }
 
     public void register(String login, String pass) {
         if (socket == null || socket.isClosed()) openConnection();
         sendMessage(AUTH_REGISTER + " " + login + " " + login + " " + pass);
+    }
+
+    public void sendMessage(String message) {
+        if (socket == null || socket.isClosed()) return;
+        try {
+            out.writeObject(message);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void uploadFile(File file) {
+        if (socket == null || socket.isClosed()) return;
+
+        try {
+            out.writeObject(new FileInfo(file.getName(), file.length(), FileInfo.Operation.PUT_FILE));
+            out.flush();
+
+            byte[] buffer = new byte[STREAM_BUFFER_SIZE];
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(socket.getOutputStream(), STREAM_BUFFER_SIZE);
+            FileInputStream outFile = new FileInputStream(file);
+            int bytesReadFromSource;
+            int totalBytesCount = 0;
+
+            while ((bytesReadFromSource = outFile.read(buffer, 0, STREAM_BUFFER_SIZE)) != -1) {
+                totalBytesCount += bytesReadFromSource;
+                bufferedOutputStream.write(buffer, 0, bytesReadFromSource);
+                bufferedOutputStream.flush();
+            }
+
+            outFile.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

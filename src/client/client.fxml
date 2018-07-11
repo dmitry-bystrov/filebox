@@ -35,7 +35,7 @@
             </center>
             <right>
                 <VBox styleClass="buttonsPane" spacing="10">
-                    <Button fx:id="uploadButton" text="Загрузить файл"/>
+                    <Button fx:id="uploadButton" onMouseClicked="#uploadFile" text="Загрузить файл"/>
                     <Button fx:id="deleteButton" text="Удалить файл"/>
                     <Button fx:id="downloadButton" text="Скачать файл"/>
                 </VBox>

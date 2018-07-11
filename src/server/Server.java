@@ -55,50 +55,11 @@ public class Server implements ConnectionSettings, ServerAPI {
         return false;
     }
 
-    public synchronized void broadcastMessage(ClientHandler fromUser, String toUser,String message){
-        String messageFromUser = FROM_USER + " " + fromUser.getNickname() + " " + message;
-        boolean personalMessageWasSent = false;
-        for (ClientHandler client : clients) {
-            if (toUser == null){
-                client.sendMessage(messageFromUser);
-            } else {
-                if (client.getNickname().equals(toUser)) {
-                    client.sendMessage(PERSONAL_MESSAGE + messageFromUser);
-                    if (!fromUser.getNickname().equals(toUser)) fromUser.sendMessage(PERSONAL_MESSAGE + messageFromUser);
-                    personalMessageWasSent = true;
-                    break;
-                }
-            }
-        }
-        if (toUser != null && !personalMessageWasSent){
-            fromUser.sendServiceMessage("Пользователя с ником " + toUser + " нет в чате.");
-        }
-    }
-
-    public synchronized void broadcastServiceMessage(String message){
-        for (ClientHandler client : clients) {
-            client.sendServiceMessage(message);
-        }
-    }
-
     public synchronized void subscribeClient(ClientHandler client){
         clients.add(client);
-        //broadcastClientList();
     }
 
     public synchronized void unsubscribeClient(ClientHandler client){
         clients.remove(client);
-        //broadcastClientList();
     }
-
-//    private synchronized void broadcastClientList() {
-//        StringBuffer sb = new StringBuffer(USERLIST);
-//        for (ClientHandler client : clients) {
-//            sb.append(" ");
-//            sb.append(client.getNickname());
-//        }
-//        for (ClientHandler client : clients) {
-//            client.login(sb.toString());
-//        }
-//    }
 }

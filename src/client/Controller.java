@@ -16,16 +16,39 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.File;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
 public class Controller implements Initializable {
     private ClientConnection clientConnection;
+    private final FileChooser fileChooser;
+    private Stage stage;
+
+    @FXML
+    public TextFlow textFlow;
+    public ScrollPane scrollPane;
+    public TextField loginField;
+    public PasswordField passwordField;
+    public VBox loginPassBox;
+    public HBox nicknameBox;
+    public TextField password2Field;
+    public Button loginButton;
+    public Button registerButton;
+    public Label registerLink;
+    public BorderPane filesPane;
+    public TableView<FileProperties> tableView;
+
+    private TableColumn<FileProperties, String> tableColumnFileName;
+    private TableColumn<FileProperties, String> tableColumnFileSize;
+    private final ObservableList<FileProperties> tableData = FXCollections.observableArrayList();
 
     public static class FileProperties {
+
         private final SimpleStringProperty fileName;
         private final SimpleStringProperty fileSize;
 
@@ -59,25 +82,9 @@ public class Controller implements Initializable {
         }
     }
 
-    @FXML
-    public TextFlow textFlow;
-    public ScrollPane scrollPane;
-    public TextField loginField;
-    public PasswordField passwordField;
-    public VBox loginPassBox;
-    public HBox nicknameBox;
-    public TextField password2Field;
-    public Button loginButton;
-    public Button registerButton;
-    public Label registerLink;
-    public BorderPane filesPane;
-    public TableView<FileProperties> tableView;
-    private TableColumn<FileProperties, String> tableColumnFileName;
-    private TableColumn<FileProperties, String> tableColumnFileSize;
-    private final ObservableList<FileProperties> tableData = FXCollections.observableArrayList();
-
     public Controller() {
-
+        fileChooser = new FileChooser();
+        clientConnection = new ClientConnection(this);
     }
 
     @Override
@@ -90,7 +97,6 @@ public class Controller implements Initializable {
         loginButton.managedProperty().bind(loginButton.visibleProperty());
         registerLink.managedProperty().bind(registerLink.visibleProperty());
         filesPane.managedProperty().bind(filesPane.visibleProperty());
-        clientConnection = new ClientConnection(this);
 
         tableColumnFileName = new TableColumn<>("Имя файла");
         tableColumnFileName.getStyleClass().add("tableColumnFileName");
@@ -102,6 +108,12 @@ public class Controller implements Initializable {
         tableView.getColumns().add(tableColumnFileName);
         tableView.getColumns().add(tableColumnFileSize);
         updateState();
+    }
+
+    public void uploadFile(MouseEvent mouseEvent) {
+        File file = fileChooser.showOpenDialog(stage);
+        if (file == null) return;
+        clientConnection.uploadFile(file);
     }
 
     public void updateTable(List<FileInfo> fileInfoList) {
@@ -118,6 +130,7 @@ public class Controller implements Initializable {
     }
 
     public void setupStageListeners(Stage stage) {
+        this.stage = stage;
         stage.setOnCloseRequest(e -> onClose());
     }
 
