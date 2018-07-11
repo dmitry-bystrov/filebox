@@ -65,11 +65,31 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
                         if (dataObject instanceof FileInfo) {
                             FileInfo fileInfo = (FileInfo) dataObject;
 
+                            if (fileInfo.getOperation() == FileInfo.Operation.DELETE_FILE) {
+                                File file = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
+                                if (file.exists()) {
+                                    if (file.delete()) {
+                                        sendServiceMessage(String.format("Файл %s удалён", fileInfo.getFileName()));
+                                        sendFileList();
+                                    } else {
+                                        sendServiceMessage(String.format("Файл %s удалить не удалось", fileInfo.getFileName()));
+                                    }
+                                } else {
+                                    sendServiceMessage(String.format("Файл %s не найден на сервере", fileInfo.getFileName()));
+                                }
+                            }
+
                             if (fileInfo.getOperation() == FileInfo.Operation.PUT_FILE) {
+                                File file = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
+                                if (file.exists()) {
+                                    sendServiceMessage(String.format("Файл с именем %s уже есть на сервере", fileInfo.getFileName()));
+                                    continue;
+                                }
+
                                 byte[] buffer = new byte[STREAM_BUFFER_SIZE];
                                 int bytesReadFromSource;
                                 int totalBytesCount = 0;
-                                FileOutputStream inFile = new FileOutputStream(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
+                                FileOutputStream inFile = new FileOutputStream(file);
                                 BufferedInputStream bufferedInputStream = new BufferedInputStream(socket.getInputStream(), STREAM_BUFFER_SIZE);
 
                                 while ((bytesReadFromSource = bufferedInputStream.read(buffer, 0, STREAM_BUFFER_SIZE)) != -1) {

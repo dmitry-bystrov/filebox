@@ -157,4 +157,15 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
             e.printStackTrace();
         }
     }
+
+    public void deleteFile(String fileName) {
+        if (socket == null || socket.isClosed()) return;
+
+        try {
+            out.writeObject(new FileInfo(fileName, 0, FileInfo.Operation.DELETE_FILE));
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

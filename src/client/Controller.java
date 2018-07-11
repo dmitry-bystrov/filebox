@@ -105,7 +105,10 @@ public class Controller implements Initializable {
     }
 
     public void deleteFile(MouseEvent mouseEvent) {
+        FileProperties fileProperties = tableView.getSelectionModel().getSelectedItem();
+        if (fileProperties == null) return;
 
+        clientConnection.deleteFile(fileProperties.getFileName());
     }
 
     public void downloadFile(MouseEvent mouseEvent) {
