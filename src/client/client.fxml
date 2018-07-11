@@ -35,16 +35,19 @@
             </center>
             <right>
                 <VBox styleClass="buttonsPane" spacing="10">
-                    <Button fx:id="uploadButton" onMouseClicked="#uploadFile" text="Загрузить файл"/>
-                    <Button fx:id="deleteButton" text="Удалить файл"/>
-                    <Button fx:id="downloadButton" text="Скачать файл"/>
+                    <Button onMouseClicked="#uploadFile" text="Загрузить файл"/>
+                    <Button onMouseClicked="#deleteFile" text="Удалить файл"/>
+                    <Button onMouseClicked="#downloadFile" text="Скачать файл"/>
                 </VBox>
             </right>
         </BorderPane>
     </center>
     <bottom>
-        <ScrollPane fx:id="scrollPane" vbarPolicy="ALWAYS" styleClass="logScrollPane">
-            <TextFlow fx:id="textFlow"/>
-        </ScrollPane>
+        <VBox>
+            <ProgressBar fx:id="progressBar" styleClass="progressBar" />
+            <ScrollPane fx:id="scrollPane" vbarPolicy="ALWAYS" styleClass="logScrollPane">
+                <TextFlow fx:id="textFlow"/>
+            </ScrollPane>
+        </VBox>
     </bottom>
 </BorderPane>

@@ -49,29 +49,29 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                             e.printStackTrace();
                         }
 
-                        String message = "";
                         if (dataObject instanceof String) {
-                            message = dataObject.toString();
+                            String message = dataObject.toString();
+                            if (message.equals(CLOSE_CONNECTION)) {
+                                notifyConnectionClosed();
+                                break;
+                            }
+
+                            if (message.startsWith(AUTH_SUCCESSFUL)) {
+                                setAuthorized(true);
+                                updateControllerState();
+                                serviceMessage("Добро пожаловать," + message.substring(AUTH_SUCCESSFUL.length()));
+                            }
+
+                            if (message.startsWith(SERVICE_MESSAGE)) {
+                                serviceMessage(message.substring(SERVICE_MESSAGE.length()));
+                            }
+
                         }
 
                         if (dataObject instanceof ArrayList) {
                             controller.updateTable((ArrayList<FileInfo>) dataObject);
                         }
 
-                        if (message.equals(CLOSE_CONNECTION)) {
-                            notifyConnectionClosed();
-                            break;
-                        }
-                        if (message.startsWith(AUTH_SUCCESSFUL)) {
-                            setAuthorized(true);
-                            updateControllerState();
-                            serviceMessage("Добро пожаловать," + message.substring(AUTH_SUCCESSFUL.length()));
-                            continue;
-                        }
-                        if (message.startsWith(SERVICE_MESSAGE)) {
-                            serviceMessage(message.substring(SERVICE_MESSAGE.length()));
-                            continue;
-                        }
                     }
                 } catch (Exception e) {
                     notifyConnectionClosed();
@@ -121,6 +121,7 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
     public void sendMessage(String message) {
         if (socket == null || socket.isClosed()) return;
         try {
+            System.out.println(String.format("out.writeObject(%s);", message));
             out.writeObject(message);
             out.flush();
         } catch (IOException e) {
@@ -145,8 +146,12 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                 totalBytesCount += bytesReadFromSource;
                 bufferedOutputStream.write(buffer, 0, bytesReadFromSource);
                 bufferedOutputStream.flush();
+
+                int finalTotalBytesCount = totalBytesCount;
+                Platform.runLater(() -> controller.updateProgressBar(finalTotalBytesCount, file.length()));
             }
 
+            Platform.runLater(() -> controller.updateProgressBar(0, 0));
             outFile.close();
         } catch (IOException e) {
             e.printStackTrace();

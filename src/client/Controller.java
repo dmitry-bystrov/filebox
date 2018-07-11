@@ -1,6 +1,7 @@
 package client;
 
 import common.FileInfo;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -41,17 +42,16 @@ public class Controller implements Initializable {
     public Button registerButton;
     public Label registerLink;
     public BorderPane filesPane;
+    public ProgressBar progressBar;
     public TableView<FileProperties> tableView;
 
-    private TableColumn<FileProperties, String> tableColumnFileName;
-    private TableColumn<FileProperties, String> tableColumnFileSize;
     private final ObservableList<FileProperties> tableData = FXCollections.observableArrayList();
 
     public static class FileProperties {
 
         private final SimpleStringProperty fileName;
-        private final SimpleStringProperty fileSize;
 
+        private final SimpleStringProperty fileSize;
         public FileProperties(String fileName, long fileSize) {
             this.fileName = new SimpleStringProperty(fileName);
             this.fileSize = new SimpleStringProperty(String.valueOf(fileSize));
@@ -80,8 +80,8 @@ public class Controller implements Initializable {
         public void setFileSize(String fileSize) {
             this.fileSize.set(fileSize);
         }
-    }
 
+    }
     public Controller() {
         fileChooser = new FileChooser();
         clientConnection = new ClientConnection(this);
@@ -89,31 +89,26 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        textFlow.maxWidthProperty().bind(scrollPane.widthProperty());
-        loginPassBox.managedProperty().bind(loginPassBox.visibleProperty());
-        nicknameBox.managedProperty().bind(nicknameBox.visibleProperty());
-        registerButton.managedProperty().bind(registerButton.visibleProperty());
-        loginButton.managedProperty().bind(loginButton.visibleProperty());
-        registerLink.managedProperty().bind(registerLink.visibleProperty());
-        filesPane.managedProperty().bind(filesPane.visibleProperty());
-
-        tableColumnFileName = new TableColumn<>("Имя файла");
-        tableColumnFileName.getStyleClass().add("tableColumnFileName");
-        tableColumnFileName.setCellValueFactory(new PropertyValueFactory<>("fileName"));
-        tableColumnFileSize = new TableColumn<>("Размер файла");
-        tableColumnFileSize.getStyleClass().add("tableColumnFileSize");
-        tableColumnFileSize.setCellValueFactory(new PropertyValueFactory<>("fileSize"));
-        tableView.setItems(tableData);
-        tableView.getColumns().add(tableColumnFileName);
-        tableView.getColumns().add(tableColumnFileSize);
+        progressBar.setProgress(0);
         updateState();
     }
 
     public void uploadFile(MouseEvent mouseEvent) {
         File file = fileChooser.showOpenDialog(stage);
         if (file == null) return;
-        clientConnection.uploadFile(file);
+
+        new Thread(() -> {
+            filesPane.setDisable(true);
+            clientConnection.uploadFile(file);
+            filesPane.setDisable(false);
+        }).start();
+    }
+
+    public void deleteFile(MouseEvent mouseEvent) {
+
+    }
+
+    public void downloadFile(MouseEvent mouseEvent) {
     }
 
     public void updateTable(List<FileInfo> fileInfoList) {
@@ -123,15 +118,43 @@ public class Controller implements Initializable {
         }
     }
 
+    public void updateProgressBar(double progress, double total) {
+        progressBar.setProgress(progress / total);
+    }
+
     public void login(){
         if (loginField.getText() != null && passwordField.getText() != null) {
             clientConnection.authorize(loginField.getText(), passwordField.getText());
         }
     }
 
-    public void setupStageListeners(Stage stage) {
+    public void setupStage(Stage stage) {
         this.stage = stage;
         stage.setOnCloseRequest(e -> onClose());
+
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        progressBar.prefWidthProperty().bind(stage.widthProperty());
+
+        loginPassBox.managedProperty().bind(loginPassBox.visibleProperty());
+        nicknameBox.managedProperty().bind(nicknameBox.visibleProperty());
+        registerButton.managedProperty().bind(registerButton.visibleProperty());
+        loginButton.managedProperty().bind(loginButton.visibleProperty());
+        registerLink.managedProperty().bind(registerLink.visibleProperty());
+        filesPane.managedProperty().bind(filesPane.visibleProperty());
+
+        TableColumn<FileProperties, String> tableColumnFileName;
+        TableColumn<FileProperties, String> tableColumnFileSize;
+
+        tableColumnFileName = new TableColumn<>("Имя файла");
+        tableColumnFileName.getStyleClass().add("tableColumnFileName");
+        tableColumnFileName.setCellValueFactory(new PropertyValueFactory<>("fileName"));
+        tableColumnFileSize = new TableColumn<>("Размер файла");
+        tableColumnFileSize.getStyleClass().add("tableColumnFileSize");
+        tableColumnFileSize.setCellValueFactory(new PropertyValueFactory<>("fileSize"));
+
+        tableView.setItems(tableData);
+        tableView.getColumns().add(tableColumnFileName);
+        tableView.getColumns().add(tableColumnFileSize);
     }
 
     private void onClose() {

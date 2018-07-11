@@ -57,6 +57,11 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
                             e.printStackTrace();
                         }
 
+                        if (dataObject instanceof String) {
+                            String message = dataObject.toString();
+                            if (message.equals(CLOSE_CONNECTION)) break;
+                        }
+
                         if (dataObject instanceof FileInfo) {
                             FileInfo fileInfo = (FileInfo) dataObject;
 
