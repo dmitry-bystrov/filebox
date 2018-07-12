@@ -20,7 +20,7 @@ public class Main extends Application {
 
         primaryStage.setTitle(WINDOW_TITLE);
         primaryStage.setScene(new Scene(root, START_WIDTH, START_HEIGHT));
-        primaryStage.getScene().getStylesheets().add((getClass().getResource("/client/css/style1.css")).toExternalForm());
+        primaryStage.getScene().getStylesheets().add((getClass().getResource("/client/css/style.css")).toExternalForm());
         primaryStage.show();
     }
 

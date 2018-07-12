@@ -8,10 +8,9 @@ import javafx.application.Platform;
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.List;
 
 public class ClientConnection implements ConnectionSettings, ServerAPI {
-    public static final int STREAM_BUFFER_SIZE = 1024;
+
     private Socket socket;
     private Controller controller;
     private boolean authorized = false;
@@ -65,13 +64,27 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                             if (message.startsWith(SERVICE_MESSAGE)) {
                                 serviceMessage(message.substring(SERVICE_MESSAGE.length()));
                             }
-
                         }
 
                         if (dataObject instanceof ArrayList) {
                             controller.updateTable((ArrayList<FileInfo>) dataObject);
                         }
 
+                        if (dataObject instanceof FileInfo) {
+                            FileInfo fileInfo = (FileInfo) dataObject;
+                            controller.disableFilesPane(true);
+
+                            switch (fileInfo.getOperation()) {
+                                case PUT_FILE:
+                                    handlePutFileRequest(fileInfo);
+                                    break;
+                                case GET_FILE:
+                                    handleGetFileRequest(fileInfo);
+                                    break;
+                            }
+
+                            controller.disableFilesPane(false);
+                        }
                     }
                 } catch (Exception e) {
                     notifyConnectionClosed();
@@ -89,19 +102,24 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
         }
     }
 
+    public void closeConnection() {
+        sendMessage(CLOSE_CONNECTION);
+    }
+
     private void notifyConnectionClosed() {
         setAuthorized(false);
         updateControllerState();
         serviceMessage("Соединение с сервером прервано");
     }
 
-    public void closeConnection() {
-        sendMessage(CLOSE_CONNECTION);
-    }
-
     public void authorize(String login, String pass) {
         if (socket == null || socket.isClosed()) openConnection();
         sendMessage(AUTH_REQUEST + " " + login + " " + pass);
+    }
+
+    public void register(String login, String pass) {
+        if (socket == null || socket.isClosed()) openConnection();
+        sendMessage(AUTH_REGISTER + " " + login + " " + login + " " + pass);
     }
 
     private void updateControllerState() {
@@ -112,33 +130,37 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
         Platform.runLater(() -> controller.serviceMessage(message));
     }
 
-
-    public void register(String login, String pass) {
-        if (socket == null || socket.isClosed()) openConnection();
-        sendMessage(AUTH_REGISTER + " " + login + " " + login + " " + pass);
-    }
-
-    public void sendMessage(String message) {
-        if (socket == null || socket.isClosed()) return;
+    public void handleGetFileRequest(FileInfo fileInfo) {
         try {
-            System.out.println(String.format("out.writeObject(%s);", message));
-            out.writeObject(message);
-            out.flush();
+            byte[] buffer = new byte[STREAM_BUFFER_SIZE];
+            int bytesReadFromSource;
+            int totalBytesCount = 0;
+            FileOutputStream inFile = new FileOutputStream(fileInfo.getSelectedFile());
+            BufferedInputStream bufferedInputStream = new BufferedInputStream(socket.getInputStream(), STREAM_BUFFER_SIZE);
+
+            while ((bytesReadFromSource = bufferedInputStream.read(buffer, 0, STREAM_BUFFER_SIZE)) != -1) {
+                inFile.write(buffer, 0, bytesReadFromSource);
+                totalBytesCount += bytesReadFromSource;
+                controller.updateProgressBar(totalBytesCount, fileInfo.getFileSize());
+
+                if (totalBytesCount == fileInfo.getFileSize()) {
+                    controller.updateProgressBar(0, 0);
+                    break;
+                }
+            }
+
+            serviceMessage(String.format("Файл %s получен с сервера", fileInfo.getFileName()));
+            inFile.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void uploadFile(File file) {
-        if (socket == null || socket.isClosed()) return;
-
+    public void handlePutFileRequest(FileInfo fileInfo) {
         try {
-            out.writeObject(new FileInfo(file.getName(), file.length(), FileInfo.Operation.PUT_FILE));
-            out.flush();
-
             byte[] buffer = new byte[STREAM_BUFFER_SIZE];
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(socket.getOutputStream(), STREAM_BUFFER_SIZE);
-            FileInputStream outFile = new FileInputStream(file);
+            FileInputStream outFile = new FileInputStream(fileInfo.getSelectedFile());
             int bytesReadFromSource;
             int totalBytesCount = 0;
 
@@ -147,22 +169,31 @@ public class ClientConnection implements ConnectionSettings, ServerAPI {
                 bufferedOutputStream.write(buffer, 0, bytesReadFromSource);
                 bufferedOutputStream.flush();
 
-                int finalTotalBytesCount = totalBytesCount;
-                Platform.runLater(() -> controller.updateProgressBar(finalTotalBytesCount, file.length()));
+                controller.updateProgressBar(totalBytesCount, fileInfo.getSelectedFile().length());
             }
 
-            Platform.runLater(() -> controller.updateProgressBar(0, 0));
+            controller.updateProgressBar(0, 0);
             outFile.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void deleteFile(String fileName) {
+    public void sendFileInfo(FileInfo fileInfo) {
         if (socket == null || socket.isClosed()) return;
 
         try {
-            out.writeObject(new FileInfo(fileName, 0, FileInfo.Operation.DELETE_FILE));
+            out.writeObject(fileInfo);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void sendMessage(String message) {
+        if (socket == null || socket.isClosed()) return;
+        try {
+            out.writeObject(message);
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();

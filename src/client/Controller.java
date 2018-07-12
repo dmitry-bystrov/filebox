@@ -1,7 +1,6 @@
 package client;
 
 import common.FileInfo;
-import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -50,8 +49,8 @@ public class Controller implements Initializable {
     public static class FileProperties {
 
         private final SimpleStringProperty fileName;
-
         private final SimpleStringProperty fileSize;
+
         public FileProperties(String fileName, long fileSize) {
             this.fileName = new SimpleStringProperty(fileName);
             this.fileSize = new SimpleStringProperty(String.valueOf(fileSize));
@@ -69,8 +68,8 @@ public class Controller implements Initializable {
             this.fileName.set(fileName);
         }
 
-        public String getFileSize() {
-            return fileSize.get();
+        public long getFileSize() {
+            return Long.valueOf(fileSize.get());
         }
 
         public SimpleStringProperty fileSizeProperty() {
@@ -82,6 +81,7 @@ public class Controller implements Initializable {
         }
 
     }
+
     public Controller() {
         fileChooser = new FileChooser();
         clientConnection = new ClientConnection(this);
@@ -97,21 +97,34 @@ public class Controller implements Initializable {
         File file = fileChooser.showOpenDialog(stage);
         if (file == null) return;
 
-        new Thread(() -> {
-            filesPane.setDisable(true);
-            clientConnection.uploadFile(file);
-            filesPane.setDisable(false);
-        }).start();
+        FileInfo fileInfo = new FileInfo(file.getName(), file.length(), FileInfo.Operation.PUT_FILE);
+        fileInfo.setSelectedFile(file);
+        clientConnection.sendFileInfo(fileInfo);
     }
 
     public void deleteFile(MouseEvent mouseEvent) {
         FileProperties fileProperties = tableView.getSelectionModel().getSelectedItem();
         if (fileProperties == null) return;
 
-        clientConnection.deleteFile(fileProperties.getFileName());
+        FileInfo fileInfo = new FileInfo(fileProperties.getFileName(), fileProperties.getFileSize(), FileInfo.Operation.DELETE_FILE);
+        clientConnection.sendFileInfo(fileInfo);
     }
 
     public void downloadFile(MouseEvent mouseEvent) {
+        FileProperties fileProperties = tableView.getSelectionModel().getSelectedItem();
+        if (fileProperties == null) return;
+
+        fileChooser.setInitialFileName(fileProperties.getFileName());
+        File selectedFile = fileChooser.showSaveDialog(stage);
+        if (selectedFile == null) return;
+
+        FileInfo fileInfo = new FileInfo(fileProperties.getFileName(), fileProperties.getFileSize(), FileInfo.Operation.GET_FILE);
+        fileInfo.setSelectedFile(selectedFile);
+        clientConnection.sendFileInfo(fileInfo);
+    }
+
+    public void disableFilesPane(boolean disable) {
+        filesPane.setDisable(disable);
     }
 
     public void updateTable(List<FileInfo> fileInfoList) {
@@ -125,7 +138,7 @@ public class Controller implements Initializable {
         progressBar.setProgress(progress / total);
     }
 
-    public void login(){
+    public void login() {
         if (loginField.getText() != null && passwordField.getText() != null) {
             clientConnection.authorize(loginField.getText(), passwordField.getText());
         }

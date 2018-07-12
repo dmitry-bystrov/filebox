@@ -27,7 +27,7 @@ public class Server implements ConnectionSettings, ServerAPI {
             {
                 socket = server.accept();
                 System.out.println("Клиент подключился");
-                new ClientHandler(this, socket).start();
+                new ClientHandler(this, socket).startHandlerThread();
             }
 
         } catch (IOException e) {

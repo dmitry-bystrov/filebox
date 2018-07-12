@@ -11,7 +11,6 @@ import java.util.List;
 
 public class ClientHandler implements ServerAPI, ConnectionSettings {
 
-    public static final int STREAM_BUFFER_SIZE = 1024;
     private Server server;
     private Socket socket;
     private ObjectInputStream in;
@@ -23,107 +22,170 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
         this.server = server;
         this.socket = socket;
         this.nickname = UNAUTHORIZED;
-    }
-
-    public void start() {
 
         try {
             in = new ObjectInputStream(socket.getInputStream());
             out = new ObjectOutputStream(socket.getOutputStream());
             out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-            new Thread(() -> {
-                try {
-                    Object dataObject = new Object();
-                    while (true) {
-                        try {
-                            dataObject = in.readObject();
-                        } catch (ClassNotFoundException e) {
-                            e.printStackTrace();
-                        }
-
-                        if (dataObject instanceof String) {
-                            String message = dataObject.toString();
-                            if (message.equals(CLOSE_CONNECTION)) break;
-                            if (handleAuthorizationRequest(message)) break;
-                        }
-                    }
-
-                    while (true) {
-                        if (nickname.equals(UNAUTHORIZED)) break;
-                        try {
-                            dataObject = in.readObject();
-                        } catch (ClassNotFoundException e) {
-                            e.printStackTrace();
-                        }
-
-                        if (dataObject instanceof String) {
-                            String message = dataObject.toString();
-                            if (message.equals(CLOSE_CONNECTION)) break;
-                        }
-
-                        if (dataObject instanceof FileInfo) {
-                            FileInfo fileInfo = (FileInfo) dataObject;
-
-                            if (fileInfo.getOperation() == FileInfo.Operation.DELETE_FILE) {
-                                File file = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
-                                if (file.exists()) {
-                                    if (file.delete()) {
-                                        sendServiceMessage(String.format("Файл %s удалён", fileInfo.getFileName()));
-                                        sendFileList();
-                                    } else {
-                                        sendServiceMessage(String.format("Файл %s удалить не удалось", fileInfo.getFileName()));
-                                    }
-                                } else {
-                                    sendServiceMessage(String.format("Файл %s не найден на сервере", fileInfo.getFileName()));
-                                }
-                            }
-
-                            if (fileInfo.getOperation() == FileInfo.Operation.PUT_FILE) {
-                                File file = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
-                                if (file.exists()) {
-                                    sendServiceMessage(String.format("Файл с именем %s уже есть на сервере", fileInfo.getFileName()));
-                                    continue;
-                                }
-
-                                byte[] buffer = new byte[STREAM_BUFFER_SIZE];
-                                int bytesReadFromSource;
-                                int totalBytesCount = 0;
-                                FileOutputStream inFile = new FileOutputStream(file);
-                                BufferedInputStream bufferedInputStream = new BufferedInputStream(socket.getInputStream(), STREAM_BUFFER_SIZE);
-
-                                while ((bytesReadFromSource = bufferedInputStream.read(buffer, 0, STREAM_BUFFER_SIZE)) != -1) {
-                                    inFile.write(buffer, 0, bytesReadFromSource);
-                                    totalBytesCount += bytesReadFromSource;
-
-                                    if (totalBytesCount == fileInfo.getFileSize()) {
-                                        break;
-                                    }
-                                }
-
-                                inFile.close();
-                                sendServiceMessage(String.format("Файл %s загружен на сервер", fileInfo.getFileName()));
-                                sendFileList();
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    System.err.println("Работа обработчика сообщений прервана");
-                } finally {
-                    server.unsubscribeClient(this);
-                    if (!socket.isClosed()) sendMessage(CLOSE_CONNECTION);
+    public void startHandlerThread() {
+        new Thread(() -> {
+            try {
+                Object dataObject = new Object();
+                while (true) {
                     try {
-                        if (!socket.isClosed()) socket.close();
-                    } catch (IOException e) {
+                        dataObject = in.readObject();
+                    } catch (ClassNotFoundException e) {
                         e.printStackTrace();
                     }
-                    System.out.println("Клиент отключился");
-                }
-            }).start();
 
-        } catch (IOException e) {
-            System.err.println("Ошибка при создании обработчика клиента");
-            e.printStackTrace();
+                    if (dataObject instanceof String) {
+                        String message = dataObject.toString();
+                        if (message.equals(CLOSE_CONNECTION)) break;
+                        if (handleAuthorizationRequest(message)) break;
+                    }
+                }
+
+                while (true) {
+                    if (nickname.equals(UNAUTHORIZED)) break;
+
+                    try {
+                        dataObject = in.readObject();
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
+
+                    if (dataObject instanceof String) {
+                        String message = dataObject.toString();
+                        if (message.equals(CLOSE_CONNECTION)) break;
+                    }
+
+                    if (dataObject instanceof FileInfo) {
+                        FileInfo fileInfo = (FileInfo) dataObject;
+
+                        switch (fileInfo.getOperation()) {
+                            case PUT_FILE:
+                                handlePutFileRequest(fileInfo);
+                                break;
+                            case GET_FILE:
+                                handleGetFileRequest(fileInfo);
+                                break;
+                            case DELETE_FILE:
+                                handleDeleteFileRequest(fileInfo);
+                                break;
+                            case RENAME_FILE:
+                                handleRenameFileRequest(fileInfo);
+                                break;
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Работа обработчика сообщений прервана");
+            } finally {
+                server.unsubscribeClient(this);
+                if (!socket.isClosed()) sendMessage(CLOSE_CONNECTION);
+                try {
+                    if (!socket.isClosed()) socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Клиент отключился");
+            }
+        }).start();
+    }
+
+    private void handlePutFileRequest(FileInfo fileInfo) throws IOException {
+        File file = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
+        if (file.exists()) {
+            sendServiceMessage(String.format("Файл с именем %s уже есть на сервере", fileInfo.getFileName()));
+            return;
+        }
+
+        out.writeObject(fileInfo);
+        out.flush();
+
+        byte[] buffer = new byte[STREAM_BUFFER_SIZE];
+        int bytesReadFromSource;
+        int totalBytesCount = 0;
+        FileOutputStream inFile = new FileOutputStream(file);
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(socket.getInputStream(), STREAM_BUFFER_SIZE);
+
+        while ((bytesReadFromSource = bufferedInputStream.read(buffer, 0, STREAM_BUFFER_SIZE)) != -1) {
+            inFile.write(buffer, 0, bytesReadFromSource);
+            totalBytesCount += bytesReadFromSource;
+
+            if (totalBytesCount == fileInfo.getFileSize()) {
+                break;
+            }
+        }
+
+        inFile.close();
+        sendServiceMessage(String.format("Файл %s загружен на сервер", fileInfo.getFileName()));
+        sendFileList();
+    }
+
+    private void handleGetFileRequest(FileInfo fileInfo) {
+        File file = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
+
+        if (file.exists()) {
+            try {
+                out.writeObject(fileInfo);
+                out.flush();
+
+                byte[] buffer = new byte[STREAM_BUFFER_SIZE];
+                BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(socket.getOutputStream(), STREAM_BUFFER_SIZE);
+                FileInputStream outFile = new FileInputStream(file);
+                int bytesReadFromSource;
+                while ((bytesReadFromSource = outFile.read(buffer, 0, STREAM_BUFFER_SIZE)) != -1) {
+                    bufferedOutputStream.write(buffer, 0, bytesReadFromSource);
+                    bufferedOutputStream.flush();
+                }
+
+                outFile.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            sendServiceMessage(String.format("Файл %s не найден на сервере", fileInfo.getFileName()));
+        }
+    }
+
+    private void handleDeleteFileRequest(FileInfo fileInfo) {
+        File file = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
+        if (file.exists()) {
+            if (file.delete()) {
+                sendServiceMessage(String.format("Файл %s удалён", fileInfo.getFileName()));
+                sendFileList();
+            } else {
+                sendServiceMessage(String.format("Файл %s удалить не удалось", fileInfo.getFileName()));
+            }
+        } else {
+            sendServiceMessage(String.format("Файл %s не найден на сервере", fileInfo.getFileName()));
+        }
+    }
+
+    private void handleRenameFileRequest(FileInfo fileInfo) {
+        File oldFile = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getFileName()));
+        File newFile = new File(String.format("%s\\%s", directory.getPath(), fileInfo.getNewFileName()));
+        if (oldFile.exists()) {
+
+            if (newFile.exists()) {
+                sendServiceMessage(String.format("Файл с именем %s уже есть на сервере", fileInfo.getNewFileName()));
+                return;
+            }
+
+            if (oldFile.renameTo(newFile)) {
+                sendServiceMessage(String.format("Файл %s переименован в файл %s", fileInfo.getFileName(), fileInfo.getNewFileName()));
+                sendFileList();
+            } else {
+                sendServiceMessage(String.format("Файл %s переименовать не удалось", fileInfo.getFileName()));
+            }
+        } else {
+            sendServiceMessage(String.format("Файл %s не найден на сервере", fileInfo.getFileName()));
         }
     }
 
@@ -188,6 +250,7 @@ public class ClientHandler implements ServerAPI, ConnectionSettings {
 
     public void sendMessage(String message) {
         try {
+            System.out.println(String.format("out.writeObject(%s);", message));
             out.writeObject(message);
             out.flush();
         } catch (IOException e) {

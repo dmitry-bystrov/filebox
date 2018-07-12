@@ -6,9 +6,5 @@ public interface ServerAPI {
     String AUTH_REGISTER = "/register";
     String AUTH_SUCCESSFUL = "/authok";
     String SERVICE_MESSAGE = "/service";
-    String PERSONAL_MESSAGE = "/personal";
     String UNAUTHORIZED = "/unauthorized";
-    String FROM_USER = "/from_user";
-    String TO_USER = "/w";
-    String USERLIST = "/userlist";
 }
