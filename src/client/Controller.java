@@ -5,10 +5,12 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
@@ -146,29 +148,33 @@ public class Controller implements Initializable {
 
     public void setupStage(Stage stage) {
         this.stage = stage;
+        setupTableView();
+        bindProperties(stage);
         stage.setOnCloseRequest(e -> onClose());
+    }
 
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        progressBar.prefWidthProperty().bind(stage.widthProperty());
-
-        loginPassBox.managedProperty().bind(loginPassBox.visibleProperty());
-        nicknameBox.managedProperty().bind(nicknameBox.visibleProperty());
-        registerButton.managedProperty().bind(registerButton.visibleProperty());
-        loginButton.managedProperty().bind(loginButton.visibleProperty());
-        registerLink.managedProperty().bind(registerLink.visibleProperty());
-        filesPane.managedProperty().bind(filesPane.visibleProperty());
-
+    private void setupTableView() {
         TableColumn<FileProperties, String> tableColumnFileName;
         TableColumn<FileProperties, String> tableColumnFileSize;
 
         tableColumnFileName = new TableColumn<>("Имя файла");
         tableColumnFileName.getStyleClass().add("tableColumnFileName");
         tableColumnFileName.setCellValueFactory(new PropertyValueFactory<>("fileName"));
+
+        tableColumnFileName.setCellFactory(TextFieldTableCell.forTableColumn());
+        tableColumnFileName.setOnEditCommit(event -> {
+            FileProperties fileProperties = event.getTableView().getItems().get(event.getTablePosition().getRow());
+            FileInfo fileInfo = new FileInfo(fileProperties.getFileName(), fileProperties.getFileSize(), FileInfo.Operation.RENAME_FILE);
+            fileInfo.setNewFileName(event.getNewValue());
+            clientConnection.sendFileInfo(fileInfo);
+        });
+
         tableColumnFileSize = new TableColumn<>("Размер файла");
         tableColumnFileSize.getStyleClass().add("tableColumnFileSize");
         tableColumnFileSize.setCellValueFactory(new PropertyValueFactory<>("fileSize"));
 
         tableView.setItems(tableData);
+        tableView.setEditable(true);
         tableView.getColumns().add(tableColumnFileName);
         tableView.getColumns().add(tableColumnFileSize);
     }
@@ -233,5 +239,17 @@ public class Controller implements Initializable {
         serviceMessageText.setId("serviceMessage");
         textFlow.getChildren().add(serviceMessageText);
         scrollToEnd();
+    }
+
+    private void bindProperties(Stage stage) {
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        progressBar.prefWidthProperty().bind(stage.widthProperty());
+
+        loginPassBox.managedProperty().bind(loginPassBox.visibleProperty());
+        nicknameBox.managedProperty().bind(nicknameBox.visibleProperty());
+        registerButton.managedProperty().bind(registerButton.visibleProperty());
+        loginButton.managedProperty().bind(loginButton.visibleProperty());
+        registerLink.managedProperty().bind(registerLink.visibleProperty());
+        filesPane.managedProperty().bind(filesPane.visibleProperty());
     }
 }
